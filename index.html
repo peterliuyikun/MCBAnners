@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCBAnners - Minecraft Banner Generator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="minecraft-bg"></div>
+    <div class="container">
+        <header>
+            <h1>🏴 MCBAnners</h1>
+            <p>Turn any image into Minecraft Java Edition banners</p>
+        </header>
+
+        <main>
+            <section class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <span class="icon">📁</span>
+                        <p>Drop an image here or click to browse</p>
+                        <input type="file" id="imageInput" accept="image/*" hidden>
+                    </div>
+                </div>
+            </section>
+
+            <section class="preview-section" id="previewSection" style="display: none;">
+                <div class="preview-container">
+                    <div class="original-preview">
+                        <h3>Original</h3>
+                        <canvas id="originalCanvas"></canvas>
+                    </div>
+                    <div class="banner-preview">
+                        <h3>Banner Preview</h3>
+                        <canvas id="bannerCanvas" width="200" height="400"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section class="controls-section" id="controlsSection" style="display: none;">
+                <div class="control-group">
+                    <label>Pattern Complexity:</label>
+                    <select id="complexitySelect">
+                        <option value="simple">Simple (2-3 layers)</option>
+                        <option value="normal" selected>Normal (4-5 layers)</option>
+                        <option value="complex">Complex (6 layers)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Color Matching:</label>
+                    <select id="colorModeSelect">
+                        <option value="accurate" selected>Accurate</option>
+                        <option value="vibrant">Vibrant</option>
+                        <option value="muted">Muted</option>
+                    </select>
+                </div>
+                <button id="generateBtn" class="mc-button">Generate Banner</button>
+            </section>
+
+            <section class="result-section" id="resultSection" style="display: none;">
+                <h2>🎨 Banner Pattern</h2>
+                <div class="pattern-display" id="patternDisplay"></div>
+                
+                <h3>📋 Crafting Instructions</h3>
+                <div class="crafting-guide" id="craftingGuide"></div>
+                
+                <div class="export-buttons">
+                    <button id="copyCommandBtn" class="mc-button secondary">Copy /give Command</button>
+                    <button id="downloadBtn" class="mc-button secondary">Download Pattern</button>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Made for Minecraft Java Edition • Vanilla Banner Patterns Only</p>
+        </footer>
+    </div>
+
+    <script src="banner-patterns.js"></script>
+    <script src="color-quantizer.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
