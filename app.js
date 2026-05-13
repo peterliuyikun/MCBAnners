@@ -20,10 +20,16 @@ class BannerGenerator {
         const imageInput = document.getElementById('imageInput');
         const generateBtn = document.getElementById('generateBtn');
 
-        uploadArea.addEventListener('click', () => imageInput.click());
+        // Click on upload area - trigger file input
+        uploadArea.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            imageInput.click();
+        });
         
+        // File input change
         imageInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
+            if (e.target.files && e.target.files.length > 0) {
                 this.loadImage(e.target.files[0]);
             }
         });
@@ -36,22 +42,47 @@ class BannerGenerator {
 
     setupDragAndDrop() {
         const uploadArea = document.getElementById('uploadArea');
+        const container = document.querySelector('.container') || document.body;
+
+        // Prevent default drag behaviors on entire page
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            container.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        uploadArea.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
 
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadArea.classList.add('dragover');
         });
 
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            // Only remove if leaving the upload area, not entering a child
+            if (!uploadArea.contains(e.relatedTarget)) {
+                uploadArea.classList.remove('dragover');
+            }
         });
 
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             uploadArea.classList.remove('dragover');
             
-            if (e.dataTransfer.files.length > 0) {
-                this.loadImage(e.dataTransfer.files[0]);
+            const files = e.dataTransfer.files;
+            if (files && files.length > 0) {
+                const file = files[0];
+                if (file.type.startsWith('image/')) {
+                    this.loadImage(file);
+                } else {
+                    this.showToast('Please drop an image file', 'error');
+                }
             }
         });
     }
