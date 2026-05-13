@@ -1,5 +1,4 @@
 // MCBAnners - Minecraft Banner Generator
-// Converts images to pixel art, then to Minecraft banner patterns
 
 class BannerGenerator {
     constructor() {
@@ -7,61 +6,65 @@ class BannerGenerator {
         this.currentImage = null;
         this.pixelArtCanvas = null;
         this.generatedBanner = null;
-        this.init();
     }
 
     init() {
-        this.setupEventListeners();
-        this.setupDragAndDrop();
-    }
-
-    setupEventListeners() {
+        console.log('Initializing...');
         const uploadArea = document.getElementById('uploadArea');
         const imageInput = document.getElementById('imageInput');
-        const generateBtn = document.getElementById('generateBtn');
-
-        uploadArea.addEventListener('click', () => imageInput.click());
         
+        if (!uploadArea || !imageInput) {
+            console.error('Required elements not found');
+            return;
+        }
+        
+        // Click to upload
+        uploadArea.addEventListener('click', () => {
+            console.log('Click triggered');
+            imageInput.click();
+        });
+        
+        // File selected
         imageInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
+            console.log('File selected:', e.target.files);
+            if (e.target.files?.length > 0) {
                 this.loadImage(e.target.files[0]);
             }
         });
-
-        generateBtn.addEventListener('click', () => this.generateBanner());
         
-        document.getElementById('copyCommandBtn')?.addEventListener('click', () => this.copyCommand());
-        document.getElementById('downloadBtn')?.addEventListener('click', () => this.downloadPattern());
-    }
-
-    setupDragAndDrop() {
-        const uploadArea = document.getElementById('uploadArea');
-
+        // Drag and drop
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadArea.classList.add('dragover');
         });
-
+        
         uploadArea.addEventListener('dragleave', () => {
             uploadArea.classList.remove('dragover');
         });
-
+        
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadArea.classList.remove('dragover');
-            
-            if (e.dataTransfer.files.length > 0) {
+            console.log('File dropped:', e.dataTransfer.files);
+            if (e.dataTransfer.files?.length > 0) {
                 this.loadImage(e.dataTransfer.files[0]);
             }
         });
+        
+        // Generate button
+        document.getElementById('generateBtn')?.addEventListener('click', () => {
+            this.generateBanner();
+        });
+        
+        console.log('Initialized successfully');
     }
 
     loadImage(file) {
         if (!file.type.startsWith('image/')) {
-            this.showToast('Please upload an image file', 'error');
+            alert('Please upload an image file');
             return;
         }
-
+        
         const reader = new FileReader();
         reader.onload = (e) => {
             const img = new Image();
@@ -77,136 +80,205 @@ class BannerGenerator {
     }
 
     createPixelArt(img) {
-        // Create pixel art at Minecraft banner resolution (20x40 pixels for banner shape)
-        const bannerWidth = 20;
-        const bannerHeight = 40;
-        
         const canvas = document.createElement('canvas');
-        canvas.width = bannerWidth;
-        canvas.height = bannerHeight;
+        canvas.width = 20;
+        canvas.height = 40;
         const ctx = canvas.getContext('2d');
-        
-        // Draw image scaled down to pixel art size
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(img, 0, 0, bannerWidth, bannerHeight);
-        
+        ctx.drawImage(img, 0, 0, 20, 40);
         this.pixelArtCanvas = canvas;
         
-        // Display original
+        // Show preview
         const origCanvas = document.getElementById('originalCanvas');
         const origCtx = origCanvas.getContext('2d');
         origCanvas.width = 200;
         origCanvas.height = 400;
         origCtx.imageSmoothingEnabled = false;
         origCtx.drawImage(canvas, 0, 0, 200, 400);
-        
-        // Show pixel art preview
-        this.showToast('Image converted to pixel art!', 'success');
     }
 
     generateBanner() {
-        if (!this.pixelArtCanvas) {
-            this.showToast('Please upload an image first', 'error');
-            return;
-        }
-
-        const complexity = document.getElementById('complexitySelect').value;
+        if (!this.pixelArtCanvas) return;
         
-        // Get pixel data
         const ctx = this.pixelArtCanvas.getContext('2d');
         const imageData = ctx.getImageData(0, 0, 20, 40);
         
-        // Analyze pixel art and generate banner
-        const bannerData = this.analyzePixelArt(imageData.data, 20, 40, complexity);
+        // Get dominant colors
+        const colors = this.getDominantColors(imageData.data, 3);
+        const baseColor = colors[0] || 'white';
         
-        this.generatedBanner = bannerData;
+        // Simple pattern detection
+        const patterns = this.detectPatterns(imageData.data, 20, 40, colors);
         
-        // Render preview
-        this.renderBannerPreview(bannerData);
+        this.generatedBanner = { baseColor, patterns };
         
-        // Display results
-        this.displayPatternResults(bannerData);
-        this.generateCraftingGuide(bannerData);
+        this.renderBanner({ baseColor, patterns });
+        this.showResults({ baseColor, patterns });
         
         document.getElementById('resultSection').style.display = 'block';
-        
-        this.showToast('Banner generated!', 'success');
     }
 
-    analyzePixelArt(data, width, height, complexity) {
-        // Get dominant colors
+    getDominantColors(data, count) {
         const colorCounts = new Map();
         
         for (let i = 0; i < data.length; i += 4) {
-            const r = data[i];
-            const g = data[i + 1];
-            const b = data[i + 2];
-            const a = data[i + 3];
-            
+            const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
             if (a < 128) continue;
-            
             const closest = this.quantizer.findClosestColor(r, g, b);
-            const key = closest.name;
-            colorCounts.set(key, (colorCounts.get(key) || 0) + 1);
+            colorCounts.set(closest.name, (colorCounts.get(closest.name) || 0) + 1);
         }
         
-        // Sort by frequency
-        const sortedColors = Array.from(colorCounts.entries())
+        return Array.from(colorCounts.entries())
             .sort((a, b) => b[1] - a[1])
+            .slice(0, count)
             .map(([name]) => name);
-        
-        const baseColor = sortedColors[0] || 'white';
-        const secondaryColor = sortedColors[1] || baseColor;
-        const tertiaryColor = sortedColors[2] || secondaryColor;
-        
-        // Analyze regions for patterns
-        const patterns = this.detectPatternsFromPixels(data, width, height, complexity);
-        
-        // Assign colors to patterns
-        const patternLayers = patterns.map((p, i) => {
-            let color = secondaryColor;
-            if (i === 0) color = secondaryColor;
-            else if (i === 1) color = tertiaryColor;
-            else color = sortedColors[i + 1] || secondaryColor;
-            
-            return { pattern: p, color: color };
-        });
-        
-        return {
-            baseColor,
-            patterns: patternLayers.slice(0, complexity === 'simple' ? 2 : complexity === 'complex' ? 6 : 4)
-        };
     }
 
-    detectPatternsFromPixels(data, width, height, complexity) {
+    detectPatterns(data, width, height, colors) {
         const patterns = [];
+        const secondary = colors[1] || colors[0];
+        const tertiary = colors[2] || secondary;
         
-        // Check for horizontal stripe (middle row different from top/bottom)
-        const topColor = this.getRegionColor(data, width, height, 0, 0, width, height * 0.3);
-        const midColor = this.getRegionColor(data, width, height, 0, height * 0.35, width, height * 0.3);
-        const botColor = this.getRegionColor(data, width, height, 0, height * 0.7, width, height * 0.3);
+        // Check regions
+        const top = this.getRegionColor(data, width, height, 0, 0, width, height * 0.3);
+        const mid = this.getRegionColor(data, width, height, 0, height * 0.35, width, height * 0.3);
+        const bot = this.getRegionColor(data, width, height, 0, height * 0.7, width, height * 0.3);
         
-        if (topColor && midColor && topColor !== midColor) {
-            patterns.push('stripe_top');
-        }
-        if (midColor && botColor && midColor !== botColor) {
-            patterns.push('stripe_bottom');
-        }
-        if (topColor && midColor && botColor && topColor === botColor && topColor !== midColor) {
-            // Replace with single middle stripe
+        if (top !== mid) patterns.push({ pattern: 'stripe_top', color: secondary });
+        if (mid !== bot && top !== bot) patterns.push({ pattern: 'stripe_bottom', color: tertiary });
+        if (top === bot && top !== mid) {
             patterns.length = 0;
-            patterns.push('stripe_middle');
+            patterns.push({ pattern: 'stripe_middle', color: secondary });
         }
         
-        // Check for vertical stripe
-        const leftColor = this.getRegionColor(data, width, height, 0, 0, width * 0.3, height);
-        const centerColor = this.getRegionColor(data, width, height, width * 0.35, 0, width * 0.3, height);
-        const rightColor = this.getRegionColor(data, width, height, width * 0.7, 0, width * 0.3, height);
+        // Add more patterns if simple
+        if (patterns.length < 2) {
+            patterns.push({ pattern: 'border', color: tertiary });
+        }
         
-        if (leftColor && centerColor && leftColor !== centerColor) {
-            patterns.push('stripe_left');
+        return patterns.slice(0, 6);
+    }
+
+    getRegionColor(data, width, height, x, y, w, h) {
+        const counts = new Map();
+        for (let py = Math.floor(y); py < Math.floor(y + h); py++) {
+            for (let px = Math.floor(x); px < Math.floor(x + w); px++) {
+                if (px >= width || py >= height) continue;
+                const i = (py * width + px) * 4;
+                const closest = this.quantizer.findClosestColor(data[i], data[i+1], data[i+2]);
+                counts.set(closest.name, (counts.get(closest.name) || 0) + 1);
+            }
         }
-        if (centerColor && rightColor && centerColor !== rightColor) {
-            patterns.push('stripe_right');
+        return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0];
+    }
+
+    renderBanner(banner) {
+        const canvas = document.getElementById('bannerCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const bw = 120, bh = 200;
+        const x = (canvas.width - bw) / 2;
+        const y = (canvas.height - bh) / 2;
+        
+        // Pole
+        ctx.fillStyle = '#5d4037';
+        ctx.fillRect(x + bw/2 - 3, y - 40, 6, 40);
+        
+        // Base
+        const baseHex = MINECRAFT_COLORS[banner.baseColor]?.hex || '#fff';
+        ctx.fillStyle = baseHex;
+        ctx.fillRect(x, y, bw, bh);
+        
+        // Patterns
+        banner.patterns.forEach(p => {
+            const hex = MINECRAFT_COLORS[p.color]?.hex || '#fff';
+            ctx.fillStyle = hex;
+            this.drawPattern(ctx, p.pattern, x, y, bw, bh);
+        });
+        
+        // Outline
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, bw, bh);
+    }
+
+    drawPattern(ctx, pattern, x, y, w, h) {
+        switch(pattern) {
+            case 'stripe_top':
+                ctx.fillRect(x, y, w, h * 0.25);
+                break;
+            case 'stripe_bottom':
+                ctx.fillRect(x, y + h * 0.75, w, h * 0.25);
+                break;
+            case 'stripe_middle':
+                ctx.fillRect(x, y + h * 0.375, w, h * 0.25);
+                break;
+            case 'stripe_center':
+                ctx.fillRect(x + w * 0.375, y, w * 0.25, h);
+                break;
+            case 'border':
+                ctx.fillRect(x, y, w, h * 0.125);
+                ctx.fillRect(x,                ctx.fillRect(x, y + h * 0.875, w, h * 0.125);
+                ctx.fillRect(x, y, w * 0.125, h);
+                ctx.fillRect(x + w * 0.875, y, w * 0.125, h);
+                break;
+            case 'cross':
+                ctx.fillRect(x + w * 0.375, y, w * 0.25, h);
+                ctx.fillRect(x, y + h * 0.375, w, h * 0.25);
+                break;
+            case 'circle':
+                ctx.beginPath();
+                ctx.arc(x + w/2, y + h/2, w * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                break;
         }
-        if (leftColor && centerColor && rightColor && leftColor === rightColor && leftColor !== centerColor) {
+    }
+
+    showResults(banner) {
+        const container = document.getElementById('patternDisplay');
+        container.innerHTML = `
+            <div class="pattern-layer base">
+                <div class="layer-number">B</div>
+                <div class="layer-info">
+                    <div class="layer-pattern">Base Banner</div>
+                    <div class="layer-color">${MINECRAFT_COLORS[banner.baseColor]?.name || banner.baseColor}</div>
+                </div>
+                <div class="color-swatch" style="background: ${MINECRAFT_COLORS[banner.baseColor]?.hex || '#fff'}"></div>
+            </div>
+            ${banner.patterns.map((p, i) => `
+                <div class="pattern-layer">
+                    <div class="layer-number">${i + 1}</div>
+                    <div class="layer-info">
+                        <div class="layer-pattern">${BANNER_PATTERNS[p.pattern]?.name || p.pattern}</div>
+                        <div class="layer-color">${MINECRAFT_COLORS[p.color]?.name || p.color}</div>
+                    </div>
+                    <div class="color-swatch" style="background: ${MINECRAFT_COLORS[p.color]?.hex || '#fff'}"></div>
+                </div>
+            `).join('')}
+        `;
+        
+        // Crafting guide
+        const guide = document.getElementById('craftingGuide');
+        guide.innerHTML = `
+            <div class="crafting-step">
+                <span class="step-number">1</span>
+                <span class="step-title">Create Base Banner</span>
+                <div class="step-desc">6 ${MINECRAFT_COLORS[banner.baseColor]?.name} wool + 1 stick</div>
+            </div>
+            ${banner.patterns.map((p, i) => `
+                <div class="crafting-step">
+                    <span class="step-number">${i + 2}</span>
+                    <span class="step-title">Add ${BANNER_PATTERNS[p.pattern]?.name || p.pattern}</span>
+                    <div class="step-desc">Use ${MINECRAFT_COLORS[p.color]?.name} dye</div>
+                </div>
+            `).join('')}
+        `;
+    }
+}
+
+// Start
+document.addEventListener('DOMContentLoaded', () => {
+    const app = new BannerGenerator();
+    app.init();
+});
