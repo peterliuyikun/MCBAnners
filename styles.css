@@ -76,9 +76,6 @@ header p {
     background: rgba(45, 74, 34, 0.3);
     cursor: pointer;
     transition: all 0.3s ease;
-    pointer-events: auto;
-    position: relative;
-    z-index: 10;
 }
 
 .upload-area:hover {
@@ -89,10 +86,6 @@ header p {
 .upload-area.dragover {
     border-color: var(--mc-gold);
     background: rgba(255, 215, 0, 0.1);
-}
-
-.upload-content {
-    pointer-events: none;
 }
 
 .upload-content .icon {
